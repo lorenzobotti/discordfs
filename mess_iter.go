@@ -6,18 +6,7 @@ import (
 	dg "github.com/bwmarrin/discordgo"
 )
 
-// praticamente io posso chiedere all'API
-// 100 messaggi alla volta. metti che il mio si
-// trova al novantesimo, mi basta una richiesta
-// sola no? se è al centounesimo me ne servono due
-// per minimizzare il numero di richieste che faccio
-// creo sta struct che tiene traccia per me
-// io gli chiedo un messaggio alla volta e se
-// ce l'ha me lo da, se no chiama l'API per farsene
-// dare altri. questo approccio credo si chiami
-// "iterator pattern" e in Rust è proprio parte del
-// linguaggio ed è molto più comodo, qua devo
-// un pò improvvisare
+// bad implementation of an iterator pattern. can you tell i've been using Rust?
 type messageIterator struct {
 	s         *dg.Session
 	channelId string

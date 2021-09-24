@@ -7,11 +7,9 @@ import (
 	"sync"
 )
 
-// questa funzione gli passo un url e un chunk da riempire
-// (tramite puntatore). mi dirai, non è meglio fargli riempire
-// solo la slice di byte, che è più generico quindi più riutilizzabile?
-// ottima domanda, la soluzione è che è complicato, te
-// lo spiego a casa se vuoi
+// downloadIntoChunk takes a pointer to a FileChunk and "fills it in" with the resource
+// at the specified url
+// todo: make this return the error instead of panicking
 func downloadIntoChunk(url string, into *FileChunk) {
 	req, err := http.Get(url)
 	if err != nil {
@@ -27,12 +25,13 @@ func downloadIntoChunk(url string, into *FileChunk) {
 	into.Contents = buf.Bytes()
 }
 
-// stesso di downloadIntoChunk ma segnala al WaitGroup quando ha finito
+// downloadIntoChunkWG is the same as downloadIntoChunk but decrements the WaitGroup when it's done
 func downloadIntoChunkWG(url string, into *FileChunk, wg *sync.WaitGroup) {
 	downloadIntoChunk(url, into)
 	wg.Done()
 }
 
+// downloadIntoChunkChan is the same as downloadIntoChunk but sends on the given channel when it's done
 func downloadIntoChunkChan(url string, into *FileChunk, done chan<- bool) {
 	downloadIntoChunk(url, into)
 	done <- true

@@ -21,9 +21,8 @@ func getChannels(s *dg.Session) []*dg.Channel {
 	return channels
 }
 
-// GetCloudChannel cerca tra tutti i canali in cui è il bot
-// e restituisce il primo che trova i quali messaggi sembrano
-// generati da questa
+// GetCloudChannel looks through all the channels the bot is in and
+// returns the first one it thinks to be a valid cloud channel
 func GetCloudChannel(s *dg.Session) *dg.Channel {
 	channels := getChannels(s)
 

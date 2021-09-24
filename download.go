@@ -10,15 +10,16 @@ import (
 	dg "github.com/bwmarrin/discordgo"
 )
 
-// ReceiveAllAtOnce looks for the file named with the provided name
-// in the channel with the provided channelID with the provided
-// session, storing the result in the provided Writer
+// ReceiveAllAtOnce looks for the file named `name`
+// in the channel with the provided `channelID` with the provided
+// session, storing the result into `into`. It first downloads
+// the whole file, then writes it all at once into `into`.
+// If you'd rather get each piece as soon as it arrives try using Receive()
 func ReceiveAllAtOnce(into io.Writer, s *dg.Session, channelID, name string) error {
 	iter := newMessageIterator(s, channelID)
 
-	// dato un singolo file non so quanti siano i pezzi, perciò
-	// invece di usare un array uso un dizionario (map) con numeri
-	// come chiavi
+	// todo: make this not need a map anymore
+	// (it used to before i implemented the FilePart.Of field)
 	pieces := map[int]*FileChunk{}
 	howManyChunks := 0
 
@@ -36,7 +37,6 @@ func ReceiveAllAtOnce(into io.Writer, s *dg.Session, channelID, name string) err
 			}
 		}
 
-		// per leggere json si fa così purtroppo
 		info := ChunkInfo{}
 		err = json.Unmarshal([]byte(mess.Content), &info)
 		if err != nil {
@@ -55,7 +55,7 @@ func ReceiveAllAtOnce(into io.Writer, s *dg.Session, channelID, name string) err
 				Info: info,
 			}
 
-			// se ho trovato tutti i pezzi
+			// if i found all the pieces
 			if len(pieces) == howManyChunks {
 				break
 			}
@@ -66,21 +66,16 @@ func ReceiveAllAtOnce(into io.Writer, s *dg.Session, channelID, name string) err
 		return errors.New("file name couldn't be found")
 	}
 
-	// un WaitGroup serve a sincronizzare più thread
-	// a ogni thread passo un puntatore a un chunk e gli
-	// dò la responsabilità di "riempire" quel chunk
-	// quando ha finito segnala al WaitGroup che ha finito
-	// (tramite wg.Done())
 	wg := &sync.WaitGroup{}
 	wg.Add(len(pieces))
 	for _, chunk := range pieces {
 		go downloadIntoChunkWG(chunk.Info.Url, chunk, wg)
 	}
 
-	// aspetto finchè non finiscono di scaricare tutti i chunk
+	// waiting for all the downloads to finish
 	wg.Wait()
 
-	// vado a scrivere ciascun chunk in ordine nel file
+	// writing each chunk in order
 	for i := 0; i < len(pieces); i++ {
 		chunk, ok := pieces[i]
 		if !ok {
@@ -96,6 +91,11 @@ func ReceiveAllAtOnce(into io.Writer, s *dg.Session, channelID, name string) err
 	return nil
 }
 
+// ReceiveAllAtOnce looks for the file named `name`
+// in the channel with the provided `channelID` with the provided
+// session, storing the result into `into`. It writes each piece into
+// `into` as soon as it comes
+// todo: remove duplication between this and ReceiveAllAtOnce()?
 func Receive(into io.Writer, s *dg.Session, channelID, name string) error {
 	iter := newMessageIterator(s, channelID)
 
@@ -103,6 +103,7 @@ func Receive(into io.Writer, s *dg.Session, channelID, name string) error {
 	pieces := []*FileChunk{}
 
 	// keeps track of how many we found already
+	// it sorta behaves like a set
 	piecesFound := map[int]struct{}{}
 	howManyChunks := 0
 
@@ -111,25 +112,26 @@ func Receive(into io.Writer, s *dg.Session, channelID, name string) error {
 	for {
 		mess, err := iter.next()
 		if err != nil {
-			// se ho finito i messaggi nel canale (EOF sta per End Of File)
+			// if it's gone through all the messages in the channel
 			if err == io.EOF {
 				break
-				// ...altri tipi di errore
+				// ...or if it's some other kind of error
 			} else {
 				return err
 			}
 		}
 
-		// per leggere json si fa così purtroppo
+		// if it can't read the message as json it just assumes it's not relevant
 		info := ChunkInfo{}
 		err = json.Unmarshal([]byte(mess.Content), &info)
 		if err != nil {
 			continue
 		}
 
+		// if i've found the file i'm looking for
 		if info.File.Name == name {
 			if len(mess.Attachments) == 0 {
-				fmt.Println("no attachments found")
+				// todo: should this be some kind of error?
 				continue
 			}
 
@@ -158,17 +160,20 @@ func Receive(into io.Writer, s *dg.Session, channelID, name string) error {
 
 	chunkChannels := make([]chan bool, howManyChunks)
 	for i, chunk := range pieces {
-		chunkChannels[i] = make(chan bool)
+		chunkChannels[i] = make(chan bool, 1)
 		go downloadIntoChunkChan(chunk.Info.Url, chunk, chunkChannels[i])
 	}
 
-	// vado a scrivere ciascun chunk in ordine nel file
 	for i := 0; i < len(pieces); i++ {
-		// we wait for the right chunk to be ready
+		// we wait for the next chunk to be ready
+		// by doing this we can send the chunk's contents on the
+		// writer as soon as we download it, laying the foundations
+		// for some streaming capability in the future, maybe
 		<-chunkChannels[i]
 
 		chunk := pieces[i]
 		emptyChunk := &FileChunk{}
+		// checking if the download came through correctly
 		if chunk == emptyChunk {
 			return fmt.Errorf("missing chunk %d", i)
 		}

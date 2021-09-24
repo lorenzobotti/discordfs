@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const uploadTestSize = 8 * KB
+const uploadTestSize = KB
 
 // delete all files that begin with "test_file"
 func init() {

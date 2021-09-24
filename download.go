@@ -160,18 +160,27 @@ func Receive(into io.Writer, s *dg.Session, channelID, name string) error {
 
 	chunkChannels := make([]chan bool, howManyChunks)
 	for i, chunk := range pieces {
+		// todo: solve the problem that makes this necessary
+		// i suspect it's an off by one error in the chunking logic
+		// when the size is a perfect multiple of chunkSize
+		if chunk == nil {
+			continue
+		}
 		chunkChannels[i] = make(chan bool, 1)
 		go downloadIntoChunkChan(chunk.Info.Url, chunk, chunkChannels[i])
 	}
 
 	for i := 0; i < len(pieces); i++ {
+		chunk := pieces[i]
+		if chunk == nil {
+			continue
+		}
 		// we wait for the next chunk to be ready
 		// by doing this we can send the chunk's contents on the
 		// writer as soon as we download it, laying the foundations
 		// for some streaming capability in the future, maybe
 		<-chunkChannels[i]
 
-		chunk := pieces[i]
 		emptyChunk := &FileChunk{}
 		// checking if the download came through correctly
 		if chunk == emptyChunk {

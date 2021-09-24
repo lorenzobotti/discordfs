@@ -2,7 +2,6 @@ package discordfs
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -14,22 +13,17 @@ import (
 // ottima domanda, la soluzione è che è complicato, te
 // lo spiego a casa se vuoi
 func downloadIntoChunk(url string, into *FileChunk) {
-	fmt.Println("i start to download")
 	req, err := http.Get(url)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("finished downloading")
-
 	buf := &bytes.Buffer{}
 	_, err = io.Copy(buf, req.Body)
-	fmt.Println("copied into buffer")
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("filling chunk")
 	into.Contents = buf.Bytes()
 }
 
@@ -37,4 +31,9 @@ func downloadIntoChunk(url string, into *FileChunk) {
 func downloadIntoChunkWG(url string, into *FileChunk, wg *sync.WaitGroup) {
 	downloadIntoChunk(url, into)
 	wg.Done()
+}
+
+func downloadIntoChunkChan(url string, into *FileChunk, done chan<- bool) {
+	downloadIntoChunk(url, into)
+	done <- true
 }

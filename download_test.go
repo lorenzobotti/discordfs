@@ -24,21 +24,16 @@ func TestNewDownload(t *testing.T) {
 		log.Fatal("i can't open the test files folder")
 	}
 
-	s, err := NewSession()
+	st, err := newTestStorage()
 	if err != nil {
-		t.Fatalf("error connecting to discord: %s", err.Error())
+		panic(err)
 	}
-
-	storage := NewStorage(s, channelId)
 
 	for _, fileInfo := range filesInFolder {
 		name := fileInfo.Name()
-		file, err := os.Open(path.Join(testFilesDir, name))
-		if err != nil {
-			t.Fatalf("i can't open the %s test file", name)
-		}
+		filePath := path.Join(testFilesDir, name)
 
-		info, err := file.Stat()
+		info, err := os.Stat(filePath)
 		if err != nil {
 			t.Fatalf("i can't get info about the %s test file", name)
 		}
@@ -48,13 +43,18 @@ func TestNewDownload(t *testing.T) {
 			continue
 		}
 
+		file, err := os.Open(filePath)
+		if err != nil {
+			t.Fatalf("i can't open the %s test file", name)
+		}
+
 		contents, err := io.ReadAll(file)
 		if err != nil {
 			t.Fatalf("i can't read the %s test file", name)
 		}
 
 		expectedSum := sha256.Sum256(contents)
-		testDownload(storage, name, expectedSum, t)
+		testDownload(st, name, expectedSum, t)
 	}
 
 }
@@ -77,6 +77,14 @@ func testDownload(st DiscStorage, filename string, expectedSum [32]byte, t *test
 	}
 }
 
-func NewSession() (*dg.Session, error) {
+func newTestSession() (*dg.Session, error) {
 	return dg.New("Bot " + authToken)
+}
+
+func newTestStorage() (DiscStorage, error) {
+	sess, err := newTestSession()
+	return DiscStorage{
+		session:   sess,
+		channelId: channelId,
+	}, err
 }

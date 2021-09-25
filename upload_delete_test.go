@@ -15,32 +15,28 @@ const uploadTestSize = KB
 
 // delete all files that begin with "test_file"
 func init() {
-	s, err := NewSession()
+	st, err := newTestStorage()
 	if err != nil {
 		panic(err)
 	}
 
-	storage := NewStorage(s, channelId)
-
-	filesOnServer, err := storage.ListFiles()
+	filesOnServer, err := st.ListFiles()
 	if err != nil {
 		panic(err)
 	}
 
 	for _, file := range filesOnServer {
 		if strings.HasPrefix(file, "test_file") {
-			storage.Delete(file)
+			st.Delete(file)
 		}
 	}
 }
 
 func TestUploadAndDelete(t *testing.T) {
-	s, err := NewSession()
+	st, err := newTestStorage()
 	if err != nil {
-		t.Fatalf("can't connect to discord: %s", err.Error())
+		panic(err)
 	}
-
-	storage := NewStorage(s, channelId)
 
 	payload := make([]byte, uploadTestSize)
 	//randGen := rand.New(rand.NewSource(20021227))
@@ -54,13 +50,13 @@ func TestUploadAndDelete(t *testing.T) {
 	checksum := sha256.Sum256(payload)
 
 	filename := "test_file_" + randomString(5)
-	err = storage.Send(bytes.NewBuffer(payload), filename, 512*B, uploadTestSize)
+	err = st.Send(bytes.NewBuffer(payload), filename, 512*B, uploadTestSize)
 	if err != nil {
 		t.Fatalf("error sending file: %s", err.Error())
 	}
 
 	downloader := bytes.Buffer{}
-	err = storage.Receive(&downloader, filename)
+	err = st.Receive(&downloader, filename)
 	if err != nil {
 		t.Fatalf("error downloading file: %s", err.Error())
 	}
@@ -74,12 +70,12 @@ func TestUploadAndDelete(t *testing.T) {
 		)
 	}
 
-	err = storage.Delete(filename)
+	err = st.Delete(filename)
 	if err != nil {
 		t.Fatalf("error deleting file: %s", err.Error())
 	}
 
-	filesOnServer, err := storage.ListFiles()
+	filesOnServer, err := st.ListFiles()
 	if err != nil {
 		t.Fatalf("error getting file list: %s", err.Error())
 	}

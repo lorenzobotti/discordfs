@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const uploadTestSize = KB + 320*B
-
 // delete all files that begin with "test_file"
 func init() {
 	st, err := newTestStorage()
@@ -38,8 +36,29 @@ func TestUploadAndDelete(t *testing.T) {
 		panic(err)
 	}
 
+	var uploadTestSizes = []int{
+		KB + 320*B,
+		KB,
+		B,
+		36 * B,
+	}
+
+	chunkSize := 512 * B
+
+	for _, size := range uploadTestSizes {
+		randomFileUploadChecksumRemove(st, size, chunkSize, t)
+	}
+}
+
+// full testing of the upload process: generate a random data buffer,
+// download it back
+// check it's correct
+// delete it
+// check it's not there anymore
+func randomFileUploadChecksumRemove(st DiscStorage, uploadTestSize, chunkSize int, t *testing.T) {
 	payload := make([]byte, uploadTestSize)
-	//randGen := rand.New(rand.NewSource(20021227))
+
+	// fill with random bytes
 	randGen := rand.New(rand.NewSource(time.Now().Unix()))
 	n, err := randGen.Read(payload)
 	if err != nil {
@@ -49,8 +68,8 @@ func TestUploadAndDelete(t *testing.T) {
 	}
 	checksum := sha256.Sum256(payload)
 
-	filename := "test_file_" + randomString(5)
-	err = st.Send(bytes.NewBuffer(payload), filename, 512*B, uploadTestSize)
+	filename := "test_file_" + randomString(5) + ".txt"
+	err = st.Send(bytes.NewBuffer(payload), filename, chunkSize, uploadTestSize)
 	if err != nil {
 		t.Fatalf("error sending file: %s", err.Error())
 	}
@@ -68,6 +87,15 @@ func TestUploadAndDelete(t *testing.T) {
 			base64.RawStdEncoding.EncodeToString(checksum[:]),
 			base64.RawStdEncoding.EncodeToString(downloadedChecksum[:]),
 		)
+	}
+
+	fileExists, err := st.DoesFileExist(filename)
+	if err != nil {
+		t.Fatalf("error checking the file's presence: %s", err.Error())
+	}
+
+	if !fileExists {
+		t.Fatal("the file was uploaded and downloaded correctly, but st.DoesFileExist() can't find it")
 	}
 
 	err = st.Delete(filename)

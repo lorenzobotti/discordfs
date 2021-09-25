@@ -11,29 +11,15 @@ import (
 	"time"
 )
 
-// delete all files that begin with "test_file"
-func init() {
-	st, err := newTestStorage()
-	if err != nil {
-		panic(err)
-	}
-
-	filesOnServer, err := st.ListFiles()
-	if err != nil {
-		panic(err)
-	}
-
-	for _, file := range filesOnServer {
-		if strings.HasPrefix(file, "test_file") {
-			st.Delete(file)
-		}
-	}
-}
-
 func TestUploadAndDelete(t *testing.T) {
 	st, err := newTestStorage()
 	if err != nil {
 		panic(err)
+	}
+
+	err = deleteTestFiles(st)
+	if err != nil {
+		t.Fatalf("error calling deleteTestFiles(): %s", err.Error())
 	}
 
 	var uploadTestSizes = []int{
@@ -113,6 +99,25 @@ func randomFileUploadChecksumRemove(st DiscStorage, uploadTestSize, chunkSize in
 			t.Fatalf("the file %s was evidently not deleted correctly, as it's still online", fileOnServer)
 		}
 	}
+}
+
+// delete all files that begin with "test_file"
+func deleteTestFiles(st DiscStorage) error {
+	filesOnServer, err := st.ListFiles()
+	if err != nil {
+		return err
+	}
+
+	for _, file := range filesOnServer {
+		if strings.HasPrefix(file, "test_file") {
+			err = st.Delete(file)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func randomString(length int) string {

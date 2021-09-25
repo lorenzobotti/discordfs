@@ -2,38 +2,56 @@ package discordfs
 
 import (
 	"encoding/json"
+	"errors"
 
 	dg "github.com/bwmarrin/discordgo"
 )
 
-func getChannels(s *dg.Session) []*dg.Channel {
-	channels := []*dg.Channel{}
-	for _, guild := range s.State.Guilds {
-		for _, channel := range guild.Channels {
+func getChannels(s *dg.Session) ([]*dg.Channel, error) {
+	err := checkWebSocket(s)
+	if err != nil {
+		return nil, err
+	}
+
+	output := []*dg.Channel{}
+	for _, guild := range s.State.Ready.Guilds {
+		channels, err := s.GuildChannels(guild.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, channel := range channels {
 			if channel.Type != dg.ChannelTypeGuildText {
 				continue
 			}
 
-			channels = append(channels, channel)
+			output = append(output, channel)
 		}
 	}
 
-	return channels
+	return output, nil
 }
 
 // GetCloudChannel looks through all the channels the bot is in and
 // returns the first one it thinks to be a valid cloud channel
-func GetCloudChannel(s *dg.Session) *dg.Channel {
-	channels := getChannels(s)
+func GetCloudChannel(s *dg.Session) (*dg.Channel, error) {
+	channels, err := getChannels(s)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, channel := range channels {
-		isCloud, _ := IsCloudChannel(s, channel.ID)
+		isCloud, err := IsCloudChannel(s, channel.ID)
 		if isCloud {
-			return channel
+			return channel, err
+		}
+
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	return nil, errors.New("no cloud channel found")
 }
 
 func IsCloudChannel(s *dg.Session, channelID string) (bool, error) {
@@ -54,4 +72,14 @@ func IsCloudChannel(s *dg.Session, channelID string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// connects to the websocket if it hasn't already
+func checkWebSocket(s *dg.Session) error {
+	err := s.Open()
+	if err != nil && err != dg.ErrWSAlreadyOpen {
+		return err
+	} else {
+		return nil
+	}
 }

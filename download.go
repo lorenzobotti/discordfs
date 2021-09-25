@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-
-	dg "github.com/bwmarrin/discordgo"
 )
 
 // ReceiveAllAtOnce looks for the file named `name`
@@ -15,8 +13,8 @@ import (
 // session, storing the result into `into`. It first downloads
 // the whole file, then writes it all at once into `into`.
 // If you'd rather get each piece as soon as it arrives try using Receive()
-func ReceiveAllAtOnce(into io.Writer, s *dg.Session, channelID, name string) error {
-	iter := newMessageIterator(s, channelID)
+func (st DiscStorage) ReceiveAllAtOnce(into io.Writer, name string) error {
+	iter := newMessageIterator(st.session, st.channelId)
 
 	// todo: make this not need a map anymore
 	// (it used to before i implemented the FilePart.Of field)
@@ -96,8 +94,8 @@ func ReceiveAllAtOnce(into io.Writer, s *dg.Session, channelID, name string) err
 // session, storing the result into `into`. It writes each piece into
 // `into` as soon as it comes
 // todo: remove duplication between this and ReceiveAllAtOnce()?
-func Receive(into io.Writer, s *dg.Session, channelID, name string) error {
-	iter := newMessageIterator(s, channelID)
+func (st DiscStorage) Receive(into io.Writer, name string) error {
+	iter := newMessageIterator(st.session, st.channelId)
 
 	// keeps the chunks found
 	pieces := []*FileChunk{}

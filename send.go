@@ -8,12 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/bwmarrin/discordgo"
 )
 
 // Send splits the `file` into chunks of size `chunkSize` and sends each one
-func Send(file io.Reader, s *discordgo.Session, channelID, filename string, chunkSize, fileSize int) error {
+func (st DiscStorage) Send(file io.Reader, filename string, chunkSize, fileSize int) error {
 	div := newChunker(FileInfo{
 		Name: filename,
 		// TODO: take this as input
@@ -40,7 +38,7 @@ func Send(file io.Reader, s *discordgo.Session, channelID, filename string, chun
 
 		filename := fmt.Sprintf("%02d_%s", chunk.Info.Part.Part, chunk.Info.File.Name)
 
-		_, err = s.ChannelFileSendWithMessage(channelID, string(info), filename, bytes.NewBuffer(chunk.Contents))
+		_, err = st.session.ChannelFileSendWithMessage(st.channelId, string(info), filename, bytes.NewBuffer(chunk.Contents))
 		if err != nil {
 			return err
 		}
@@ -51,11 +49,11 @@ func Send(file io.Reader, s *discordgo.Session, channelID, filename string, chun
 }
 
 // SendFile is a frontend to `Send` that doesn't ask you for a name or a file size
-func SendFile(file *os.File, s *discordgo.Session, channelID string, chunkSize int) error {
+func (st DiscStorage) SendFile(file *os.File, chunkSize int) error {
 	stat, err := file.Stat()
 	if err != nil {
 		return fmt.Errorf("error calling file.Stat(): %w", err)
 	}
 
-	return Send(file, s, channelID, filepath.Base(file.Name()), chunkSize, int(stat.Size()))
+	return st.Send(file, filepath.Base(file.Name()), chunkSize, int(stat.Size()))
 }

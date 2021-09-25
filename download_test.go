@@ -29,6 +29,8 @@ func TestNewDownload(t *testing.T) {
 		t.Fatalf("error connecting to discord: %s", err.Error())
 	}
 
+	storage := NewStorage(s, channelId)
+
 	for _, fileInfo := range filesInFolder {
 		name := fileInfo.Name()
 		file, err := os.Open(path.Join(testFilesDir, name))
@@ -52,14 +54,14 @@ func TestNewDownload(t *testing.T) {
 		}
 
 		expectedSum := sha256.Sum256(contents)
-		testDownload(s, channelId, name, expectedSum, t)
+		testDownload(storage, name, expectedSum, t)
 	}
 
 }
 
-func testDownload(s *dg.Session, channel, filename string, expectedSum [32]byte, t *testing.T) {
+func testDownload(st DiscStorage, filename string, expectedSum [32]byte, t *testing.T) {
 	buf := bytes.Buffer{}
-	err := Receive(&buf, s, channel, filename)
+	err := st.Receive(&buf, filename)
 	if err != nil {
 		t.Fatalf("error downloading '%s': %s", filename, err.Error())
 	}

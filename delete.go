@@ -3,12 +3,10 @@ package discordfs
 import (
 	"encoding/json"
 	"io"
-
-	dg "github.com/bwmarrin/discordgo"
 )
 
-func Delete(s *dg.Session, channelID, filename string) error {
-	iter := newMessageIterator(s, channelID)
+func (st DiscStorage) Delete(filename string) error {
+	iter := newMessageIterator(st.session, st.channelId)
 
 	for {
 		mess, err := iter.next()
@@ -28,7 +26,7 @@ func Delete(s *dg.Session, channelID, filename string) error {
 		}
 
 		if info.File.Name == filename {
-			err = s.ChannelMessageDelete(channelID, mess.ID)
+			err = st.session.ChannelMessageDelete(st.channelId, mess.ID)
 			if err != nil {
 				return err
 			}

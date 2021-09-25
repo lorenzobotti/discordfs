@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	"github.com/bwmarrin/discordgo"
 )
 
-func ListFiles(s *discordgo.Session, channelId string) ([]string, error) {
-	iter := newMessageIterator(s, channelId)
+// ListFiles lists all the files `st` can find
+// todo: make this return a slice of *os.FileInfo
+func (st DiscStorage) ListFiles() ([]string, error) {
+	iter := newMessageIterator(st.session, st.channelId)
 	set := map[string]struct{}{}
 
 	for {
@@ -38,8 +38,9 @@ func ListFiles(s *discordgo.Session, channelId string) ([]string, error) {
 	return output, nil
 }
 
-func DoesFileExist(s *discordgo.Session, channelId, filename string) (bool, error) {
-	iter := newMessageIterator(s, channelId)
+// DoesFileExist checks if a file exists on the cloud channel
+func (st DiscStorage) DoesFileExist(filename string) (bool, error) {
+	iter := newMessageIterator(st.session, st.channelId)
 
 	for {
 		msg, err := iter.next()

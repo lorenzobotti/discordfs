@@ -54,14 +54,33 @@ func TestNewDownload(t *testing.T) {
 		}
 
 		expectedSum := sha256.Sum256(contents)
-		testDownload(st, name, expectedSum, t)
+		testChannelDownload(st, name, expectedSum, t)
+		testDownloadAtOnce(st, name, expectedSum, t)
 	}
 
 }
 
-func testDownload(st DiscStorage, filename string, expectedSum [32]byte, t *testing.T) {
+func testChannelDownload(st DiscStorage, filename string, expectedSum [32]byte, t *testing.T) {
 	buf := bytes.Buffer{}
 	err := st.Receive(&buf, filename)
+	if err != nil {
+		t.Fatalf("error downloading '%s': %s", filename, err.Error())
+	}
+
+	checksum := sha256.Sum256(buf.Bytes())
+
+	if expectedSum != checksum {
+		t.Fatalf(
+			"incorrect checksum: expected\n%s\nfound \n%s\n",
+			base64.RawStdEncoding.EncodeToString(expectedSum[:]),
+			base64.RawStdEncoding.EncodeToString(checksum[:]),
+		)
+	}
+}
+
+func testDownloadAtOnce(st DiscStorage, filename string, expectedSum [32]byte, t *testing.T) {
+	buf := bytes.Buffer{}
+	err := st.ReceiveAllAtOnce(&buf, filename)
 	if err != nil {
 		t.Fatalf("error downloading '%s': %s", filename, err.Error())
 	}

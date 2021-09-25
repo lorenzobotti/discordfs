@@ -13,60 +13,15 @@ import (
 // session, storing the result into `into`. It first downloads
 // the whole file, then writes it all at once into `into`.
 // If you'd rather get each piece as soon as it arrives try using Receive()
-func (st DiscStorage) ReceiveAllAtOnce(into io.Writer, name string) error {
-	iter := newMessageIterator(st.session, st.channelId)
-
-	// todo: make this not need a map anymore
-	// (it used to before i implemented the FilePart.Of field)
-	pieces := map[int]*FileChunk{}
-	howManyChunks := 0
-
-	// cerco, tra tutti i messaggi, quelli che hanno il file che mi serve
-	// e mi salvo l'url, non scarico niente ancora
-	for {
-		mess, err := iter.next()
-		if err != nil {
-			// se ho finito i messaggi nel canale (EOF sta per End Of File)
-			if err == io.EOF {
-				break
-				// ...altri tipi di errore
-			} else {
-				return err
-			}
-		}
-
-		info := ChunkInfo{}
-		err = json.Unmarshal([]byte(mess.Content), &info)
-		if err != nil {
-			continue
-		}
-
-		if info.File.Name == name {
-			if len(mess.Attachments) == 0 {
-				continue
-			}
-
-			info.Url = mess.Attachments[0].URL
-			howManyChunks = info.Part.Of + 1
-
-			pieces[info.Part.Part] = &FileChunk{
-				Info: info,
-			}
-
-			// if i found all the pieces
-			if len(pieces) == howManyChunks {
-				break
-			}
-		}
-	}
-
-	if len(pieces) == 0 {
-		return errors.New("file name couldn't be found")
+func (st DiscStorage) ReceiveAllAtOnce(into io.Writer, filename string) error {
+	chunks, err := st.fileChunks(filename)
+	if err != nil {
+		return err
 	}
 
 	wg := &sync.WaitGroup{}
-	wg.Add(len(pieces))
-	for _, chunk := range pieces {
+	wg.Add(len(chunks))
+	for _, chunk := range chunks {
 		go downloadIntoChunkWG(chunk.Info.Url, chunk, wg)
 	}
 
@@ -74,12 +29,7 @@ func (st DiscStorage) ReceiveAllAtOnce(into io.Writer, name string) error {
 	wg.Wait()
 
 	// writing each chunk in order
-	for i := 0; i < len(pieces); i++ {
-		chunk, ok := pieces[i]
-		if !ok {
-			return fmt.Errorf("missing chunk %d", i)
-		}
-
+	for _, chunk := range chunks {
 		_, err := into.Write(chunk.Contents)
 		if err != nil {
 			return err
@@ -94,70 +44,16 @@ func (st DiscStorage) ReceiveAllAtOnce(into io.Writer, name string) error {
 // session, storing the result into `into`. It writes each piece into
 // `into` as soon as it comes
 // todo: remove duplication between this and ReceiveAllAtOnce()?
-func (st DiscStorage) Receive(into io.Writer, name string) error {
-	iter := newMessageIterator(st.session, st.channelId)
-
-	// keeps the chunks found
-	pieces := []*FileChunk{}
-
-	// keeps track of how many we found already
-	// it sorta behaves like a set
-	piecesFound := map[int]struct{}{}
-	howManyChunks := 0
-
-	// cerco, tra tutti i messaggi, quelli che hanno il file che mi serve
-	// e mi salvo l'url, non scarico niente ancora
-	for {
-		mess, err := iter.next()
-		if err != nil {
-			// if it's gone through all the messages in the channel
-			if err == io.EOF {
-				break
-				// ...or if it's some other kind of error
-			} else {
-				return err
-			}
-		}
-
-		// if it can't read the message as json it just assumes it's not relevant
-		info := ChunkInfo{}
-		err = json.Unmarshal([]byte(mess.Content), &info)
-		if err != nil {
-			continue
-		}
-
-		// if i've found the file i'm looking for
-		if info.File.Name == name {
-			if len(mess.Attachments) == 0 {
-				// todo: should this be some kind of error?
-				continue
-			}
-
-			thisIsTheFirstChunk := howManyChunks == 0
-			if thisIsTheFirstChunk {
-				howManyChunks = info.Part.Of + 1
-				pieces = make([]*FileChunk, howManyChunks)
-			}
-
-			info.Url = mess.Attachments[0].URL
-			pieces[info.Part.Part] = &FileChunk{
-				Info: info,
-			}
-			piecesFound[info.Part.Part] = struct{}{}
-
-			// se ho trovato tutti i pezzi
-			if len(piecesFound) == howManyChunks {
-				break
-			}
-		}
+func (st DiscStorage) Receive(into io.Writer, filename string) error {
+	chunks, err := st.fileChunks(filename)
+	if err != nil {
+		return err
 	}
 
-	if len(pieces) == 0 {
-		return errors.New("file name couldn't be found")
-	}
+	howManyChunks := len(chunks)
 
 	chunkChannels := make([]chan bool, howManyChunks)
-	for i, chunk := range pieces {
+	for i, chunk := range chunks {
 		// todo: solve the problem that makes this necessary
 		// i suspect it's an off by one error in the chunking logic
 		// when the size is a perfect multiple of chunkSize
@@ -168,8 +64,8 @@ func (st DiscStorage) Receive(into io.Writer, name string) error {
 		go downloadIntoChunkChan(chunk.Info.Url, chunk, chunkChannels[i])
 	}
 
-	for i := 0; i < len(pieces); i++ {
-		chunk := pieces[i]
+	for i := 0; i < len(chunks); i++ {
+		chunk := chunks[i]
 		if chunk == nil {
 			continue
 		}
@@ -192,4 +88,73 @@ func (st DiscStorage) Receive(into io.Writer, name string) error {
 	}
 
 	return nil
+}
+
+// fileChunks looks in the channel for all chunks of the file, unmarshals them and makes sure
+// they're all there
+func (st DiscStorage) fileChunks(filename string) ([]*FileChunk, error) {
+	iter := newMessageIterator(st.session, st.channelId)
+
+	// keeps the chunks found
+	pieces := []*FileChunk{}
+
+	piecesFound := 0
+	howManyChunks := 0
+
+	// cerco, tra tutti i messaggi, quelli che hanno il file che mi serve
+	// e mi salvo l'url, non scarico niente ancora
+	for {
+		mess, err := iter.next()
+		if err != nil {
+			// if it's gone through all the messages in the channel
+			if err == io.EOF {
+				break
+				// ...or if it's some other kind of error
+			} else {
+				return pieces, err
+			}
+		}
+
+		// if it can't read the message as json it just assumes it's not relevant
+		info := ChunkInfo{}
+		err = json.Unmarshal([]byte(mess.Content), &info)
+		if err != nil {
+			continue
+		}
+
+		// if i've found the file i'm looking for
+		if info.File.Name == filename {
+			if len(mess.Attachments) == 0 {
+				// todo: should this be some kind of error?
+				continue
+			}
+
+			thisIsTheFirstChunk := howManyChunks == 0
+			if thisIsTheFirstChunk {
+				howManyChunks = info.Part.Of + 1
+				pieces = make([]*FileChunk, howManyChunks)
+			}
+
+			info.Url = mess.Attachments[0].URL
+			pieces[info.Part.Part] = &FileChunk{
+				Info: info,
+			}
+			piecesFound += 1
+
+			// se ho trovato tutti i pezzi
+			if piecesFound == howManyChunks {
+				break
+			}
+		}
+	}
+
+	if howManyChunks == 0 {
+		return nil, errors.New("file couldn't be found")
+	}
+
+	if piecesFound != howManyChunks {
+		return nil, errors.New("couldn't find all chunks")
+	}
+
+	return pieces, nil
 }

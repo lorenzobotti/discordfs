@@ -54,12 +54,6 @@ func (st DiscStorage) Receive(into io.Writer, filename string) error {
 
 	chunkChannels := make([]chan bool, howManyChunks)
 	for i, chunk := range chunks {
-		// todo: solve the problem that makes this necessary
-		// i suspect it's an off by one error in the chunking logic
-		// when the size is a perfect multiple of chunkSize
-		if chunk == nil {
-			continue
-		}
 		chunkChannels[i] = make(chan bool, 1)
 		go downloadIntoChunkChan(chunk.Info.Url, chunk, chunkChannels[i])
 	}

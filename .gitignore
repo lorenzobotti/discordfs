@@ -17,3 +17,5 @@
 .vscode
 test_files/*
 secrets.go
+coverage*
+channels_test.go

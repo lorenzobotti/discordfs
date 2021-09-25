@@ -18,7 +18,7 @@ func (st DiscStorage) Send(file io.Reader, filename string, chunkSize, fileSize 
 		Pubblished: time.Now(),
 	}, file, chunkSize)
 
-	lastChunk := fileSize / chunkSize
+	lastChunk := chunksNeeded(fileSize, chunkSize) - 1
 
 	for {
 		chunk, done, err := div.nextChunk()
@@ -56,4 +56,14 @@ func (st DiscStorage) SendFile(file *os.File, chunkSize int) error {
 	}
 
 	return st.Send(file, filepath.Base(file.Name()), chunkSize, int(stat.Size()))
+}
+
+func chunksNeeded(fileSize, chunkSize int) int {
+	chunks := fileSize / chunkSize
+
+	if chunks*chunkSize >= fileSize {
+		return chunks
+	} else {
+		return chunks + 1
+	}
 }

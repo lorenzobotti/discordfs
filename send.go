@@ -13,16 +13,17 @@ import (
 // Send splits the `file` into chunks of size `chunkSize` and sends each one
 func (st DiscStorage) Send(file io.Reader, filename string, chunkSize, fileSize int) error {
 	div := newChunker(FileInfo{
-		Name: filename,
+		name: filename,
 		// TODO: take this as input
-		Pubblished: time.Now(),
+		pubblished: time.Now(),
+		size:       fileSize,
 	}, file, chunkSize)
 
 	lastChunk := chunksNeeded(fileSize, chunkSize) - 1
 
 	for {
 		chunk, done, err := div.nextChunk()
-		chunk.Info.Part.Of = lastChunk
+		chunk.Info.Part.of = lastChunk
 		if err != nil {
 			return err
 		}
@@ -36,7 +37,7 @@ func (st DiscStorage) Send(file io.Reader, filename string, chunkSize, fileSize 
 			return err
 		}
 
-		filename := fmt.Sprintf("%02d_%s", chunk.Info.Part.Part, chunk.Info.File.Name)
+		filename := fmt.Sprintf("%02d_%s", chunk.Info.Part.part, chunk.Info.File.name)
 
 		_, err = st.session.ChannelFileSendWithMessage(st.channelId, string(info), filename, bytes.NewBuffer(chunk.Contents))
 		if err != nil {

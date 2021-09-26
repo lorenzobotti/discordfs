@@ -25,7 +25,7 @@ func (st DiscStorage) Delete(filename string) error {
 			continue
 		}
 
-		if info.File.Name == filename {
+		if info.File.name == filename {
 			err = st.session.ChannelMessageDelete(st.channelId, mess.ID)
 			if err != nil {
 				return err

@@ -36,11 +36,12 @@ func TestUploadAndDelete(t *testing.T) {
 	}
 }
 
-// full testing of the upload process: generate a random data buffer,
-// download it back
-// check it's correct
-// delete it
-// check it's not there anymore
+// full testing of the upload process:
+// generate a random data buffer,
+// download it back,
+// check it's correct,
+// delete it,
+// check it's not there anymore.
 func randomFileUploadChecksumRemove(st DiscStorage, uploadTestSize, chunkSize int, t *testing.T) {
 	payload := make([]byte, uploadTestSize)
 
@@ -95,8 +96,8 @@ func randomFileUploadChecksumRemove(st DiscStorage, uploadTestSize, chunkSize in
 	}
 
 	for _, fileOnServer := range filesOnServer {
-		if fileOnServer == filename {
-			t.Fatalf("the file %s was evidently not deleted correctly, as it's still online", fileOnServer)
+		if fileOnServer.Name() == filename {
+			t.Fatalf("the file %s was evidently not deleted correctly, as it's still online", fileOnServer.Name())
 		}
 	}
 }
@@ -109,8 +110,8 @@ func deleteTestFiles(st DiscStorage) error {
 	}
 
 	for _, file := range filesOnServer {
-		if strings.HasPrefix(file, "test_file") {
-			err = st.Delete(file)
+		if strings.HasPrefix(file.Name(), "test_file") {
+			err = st.Delete(file.Name())
 			if err != nil {
 				return err
 			}

@@ -40,8 +40,8 @@ func (c *chunker) nextChunk() (chunk FileChunk, done bool, err error) {
 		Info: ChunkInfo{
 			File: c.info,
 			Part: PartInfo{
-				Part:   c.chunksRead,
-				Length: n,
+				part:   c.chunksRead,
+				length: n,
 			},
 		},
 	}

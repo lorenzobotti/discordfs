@@ -2,15 +2,17 @@ package discordfs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 )
 
 // ListFiles lists all the files `st` can find
 // todo: make this return a slice of *os.FileInfo
-func (st DiscStorage) ListFiles() ([]string, error) {
+func (st DiscStorage) ListFiles() ([]FileInfo, error) {
 	iter := newMessageIterator(st.session, st.channelId)
-	set := map[string]struct{}{}
+	set := map[string]FileInfo{}
 
 	for {
 		msg, err := iter.next()
@@ -27,19 +29,21 @@ func (st DiscStorage) ListFiles() ([]string, error) {
 			continue
 		}
 
-		set[info.File.Name] = struct{}{}
+		set[info.File.name] = info.File
 	}
 
-	output := make([]string, 0, len(set))
-	for name, _ := range set {
-		output = append(output, name)
+	output := make([]FileInfo, 0, len(set))
+	for _, info := range set {
+		output = append(output, info)
 	}
 
 	return output, nil
 }
 
-// DoesFileExist checks if a file exists on the cloud channel
-func (st DiscStorage) DoesFileExist(filename string) (bool, error) {
+var ErrFileNotFound = errors.New("file couldn't be found")
+
+// Open returns a DiscFile if found on the channel
+func (st DiscStorage) GetFile(filename string) (*DiscFile, error) {
 	iter := newMessageIterator(st.session, st.channelId)
 
 	for {
@@ -48,7 +52,7 @@ func (st DiscStorage) DoesFileExist(filename string) (bool, error) {
 			if err == io.EOF {
 				break
 			}
-			return false, fmt.Errorf("errore nel richiedere messaggi: %w", err)
+			return nil, fmt.Errorf("errore nel richiedere messaggi: %w", err)
 		}
 
 		info := ChunkInfo{}
@@ -57,10 +61,33 @@ func (st DiscStorage) DoesFileExist(filename string) (bool, error) {
 			continue
 		}
 
-		if info.File.Name == filename {
-			return true, nil
+		if info.File.name == filename {
+			// todo: newDiscFile()
+			return &DiscFile{
+				storage: st,
+				info:    info.File,
+			}, nil
 		}
 	}
 
-	return false, nil
+	return nil, ErrFileNotFound
+}
+
+func (st DiscStorage) Open(filename string) (fs.File, error) {
+	return st.GetFile(filename)
+}
+
+// DoesFileExist checks if a file exists on the cloud channel
+func (st DiscStorage) DoesFileExist(filename string) (bool, error) {
+	_, err := st.Open(filename)
+
+	if err != nil {
+		if err == ErrFileNotFound {
+			return false, nil
+		} else {
+			return false, err
+		}
+	} else {
+		return true, nil
+	}
 }

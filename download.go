@@ -117,7 +117,7 @@ func (st DiscStorage) fileChunks(filename string) ([]*FileChunk, error) {
 		}
 
 		// if i've found the file i'm looking for
-		if info.File.Name == filename {
+		if info.File.name == filename {
 			if len(mess.Attachments) == 0 {
 				// todo: should this be some kind of error?
 				continue
@@ -125,12 +125,12 @@ func (st DiscStorage) fileChunks(filename string) ([]*FileChunk, error) {
 
 			thisIsTheFirstChunk := howManyChunks == 0
 			if thisIsTheFirstChunk {
-				howManyChunks = info.Part.Of + 1
+				howManyChunks = info.Part.of + 1
 				pieces = make([]*FileChunk, howManyChunks)
 			}
 
 			info.Url = mess.Attachments[0].URL
-			pieces[info.Part.Part] = &FileChunk{
+			pieces[info.Part.part] = &FileChunk{
 				Info: info,
 			}
 			piecesFound += 1

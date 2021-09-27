@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 // Send splits the `file` into chunks of size `chunkSize` and sends each one
@@ -39,7 +41,17 @@ func (st DiscStorage) Send(file io.Reader, filename string, chunkSize, fileSize 
 
 		filename := fmt.Sprintf("%02d_%s", chunk.Info.Part.part, chunk.Info.File.name)
 
-		_, err = st.session.ChannelFileSendWithMessage(st.channelId, string(info), filename, bytes.NewBuffer(chunk.Contents))
+		attachment := discordgo.File{
+			Name:   filename,
+			Reader: bytes.NewBuffer(chunk.Contents),
+		}
+
+		message := discordgo.MessageSend{
+			Content: string(info),
+			Files:   []*discordgo.File{&attachment},
+		}
+
+		_, err = st.session.ChannelMessageSendComplex(st.channelId, &message)
 		if err != nil {
 			return err
 		}

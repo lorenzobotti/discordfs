@@ -32,6 +32,18 @@ type DiscFile struct {
 	hasDownloaded bool
 }
 
+func (st DiscStorage) Open(filename string) (fs.File, error) {
+	return st.GetFile(filename)
+}
+
+func (st DiscStorage) Stat(filename string) (fs.FileInfo, error) {
+	file, err := st.GetFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	return file.Stat()
+}
+
 func (df DiscFile) ConcreteStat() (FileInfo, error) { return df.info, nil }
 func (df DiscFile) Stat() (fs.FileInfo, error)      { return df.ConcreteStat() }
 func (df *DiscFile) Close() error {

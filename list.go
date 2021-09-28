@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 )
 
 // ListFiles lists all the files `st` can find
@@ -71,10 +70,6 @@ func (st DiscStorage) GetFile(filename string) (*DiscFile, error) {
 	}
 
 	return nil, ErrFileNotFound
-}
-
-func (st DiscStorage) Open(filename string) (fs.File, error) {
-	return st.GetFile(filename)
 }
 
 // DoesFileExist checks if a file exists on the cloud channel

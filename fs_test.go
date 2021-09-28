@@ -6,11 +6,13 @@ import (
 )
 
 func TestImplementsFS(t *testing.T) {
-	st, err := newTestStorage()
-	if err != nil {
-		t.Fatalf("error initializing storage: %s", err.Error())
-	}
-
-	functionThatTakesFS := func(_ fs.FS) {}
-	functionThatTakesFS(st)
+	_ = (fs.FS)(DiscStorage{})
 }
+
+func TestImplementsStatFS(t *testing.T) {
+	_ = (fs.StatFS)(DiscStorage{})
+}
+
+//func TestImplementsReadDirFS(t *testing.T) {
+//	_ = (fs.ReadDirFS)(DiscStorage{})
+//}

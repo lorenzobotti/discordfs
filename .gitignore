@@ -18,3 +18,4 @@
 test_files/*
 secrets.go
 coverage*
+cmd

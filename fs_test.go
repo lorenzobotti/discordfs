@@ -13,6 +13,6 @@ func TestImplementsStatFS(t *testing.T) {
 	_ = (fs.StatFS)(DiscStorage{})
 }
 
-//func TestImplementsReadDirFS(t *testing.T) {
-//	_ = (fs.ReadDirFS)(DiscStorage{})
-//}
+func TestImplementsReadDirFS(t *testing.T) {
+	_ = (fs.ReadDirFS)(DiscStorage{})
+}

@@ -56,7 +56,12 @@ func randomFileUploadChecksumRemove(st DiscStorage, uploadTestSize, chunkSize in
 	checksum := sha256.Sum256(payload)
 
 	filename := "test_file_" + randomString(5) + ".txt"
-	err = st.Send(bytes.NewBuffer(payload), filename, chunkSize, uploadTestSize)
+	info := FileInfo{
+		name:       filename,
+		pubblished: time.Now(),
+		size:       uploadTestSize,
+	}
+	err = st.Send(bytes.NewBuffer(payload), info, chunkSize)
 	if err != nil {
 		t.Fatalf("error sending file: %s", err.Error())
 	}
@@ -90,7 +95,7 @@ func randomFileUploadChecksumRemove(st DiscStorage, uploadTestSize, chunkSize in
 		t.Fatalf("error deleting file: %s", err.Error())
 	}
 
-	filesOnServer, err := st.ListFiles()
+	filesOnServer, err := st.ListFiles("/")
 	if err != nil {
 		t.Fatalf("error getting file list: %s", err.Error())
 	}
@@ -104,7 +109,7 @@ func randomFileUploadChecksumRemove(st DiscStorage, uploadTestSize, chunkSize in
 
 // delete all files that begin with "test_file"
 func deleteTestFiles(st DiscStorage) error {
-	filesOnServer, err := st.ListFiles()
+	filesOnServer, err := st.ListFiles("/")
 	if err != nil {
 		return err
 	}

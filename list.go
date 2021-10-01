@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
+const Root = "/"
+
 // ListFiles lists all the files `st` can find
-// todo: make this return a slice of *os.FileInfo
-func (st DiscStorage) ListFiles() ([]FileInfo, error) {
+func (st DiscStorage) ListFiles(folder string) ([]FileInfo, error) {
+	folder = cleanPath(folder)
+
 	iter := newMessageIterator(st.session, st.channelId)
 	set := map[string]FileInfo{}
 
@@ -28,7 +32,19 @@ func (st DiscStorage) ListFiles() ([]FileInfo, error) {
 			continue
 		}
 
-		set[info.File.name] = info.File
+		if strings.HasPrefix(info.File.name, folder) {
+			relativePath := strings.TrimPrefix(info.File.name, folder)
+
+			if !isInFolder(relativePath) {
+				set[info.File.name] = info.File
+			} else {
+				folderName := topFolder(info.File.name)
+				set[folderName] = FileInfo{
+					name:     folderName,
+					isFolder: true,
+				}
+			}
+		}
 	}
 
 	output := make([]FileInfo, 0, len(set))
@@ -43,6 +59,7 @@ var ErrFileNotFound = errors.New("file couldn't be found")
 
 // Open returns a DiscFile if found on the channel
 func (st DiscStorage) GetFile(filename string) (*DiscFile, error) {
+	filename = cleanPath(filename)
 	iter := newMessageIterator(st.session, st.channelId)
 
 	for {
@@ -74,10 +91,11 @@ func (st DiscStorage) GetFile(filename string) (*DiscFile, error) {
 
 // DoesFileExist checks if a file exists on the cloud channel
 func (st DiscStorage) DoesFileExist(filename string) (bool, error) {
+	filename = cleanPath(filename)
 	_, err := st.Open(filename)
 
 	if err != nil {
-		if err == ErrFileNotFound {
+		if errors.Is(err, ErrFileNotFound) {
 			return false, nil
 		} else {
 			return false, err

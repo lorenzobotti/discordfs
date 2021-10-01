@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func CleanPath(p string) string {
+func cleanPath(p string) string {
 	cleaned := path.Clean(p)
 	if cleaned == "." {
 		return "/"

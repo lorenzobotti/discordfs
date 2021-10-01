@@ -97,7 +97,7 @@ func (f FileInfo) FullPath() string { return f.name }
 
 func NewFileInfo(filePath string, pubblished time.Time, size int) FileInfo {
 	return FileInfo{
-		name:       CleanPath(filePath),
+		name:       cleanPath(filePath),
 		pubblished: pubblished,
 		size:       size,
 	}

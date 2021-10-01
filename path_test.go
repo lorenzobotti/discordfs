@@ -37,7 +37,7 @@ func TestCleanPath(t *testing.T) {
 	}
 
 	for _, c := range testCases {
-		cleaned := CleanPath(c.c)
+		cleaned := cleanPath(c.c)
 		if cleaned != c.exp {
 			t.Fatalf("expected %s, got %s", c.exp, cleaned)
 		}

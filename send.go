@@ -13,7 +13,7 @@ import (
 
 // Send splits the `file` into chunks of size `chunkSize` and sends each one
 func (st DiscStorage) Send(file io.Reader, info FileInfo, chunkSize int) error {
-	info.name = CleanPath(info.name)
+	info.name = cleanPath(info.name)
 	div := newChunker(info, file, chunkSize)
 
 	lastChunk := chunksNeeded(info.size, chunkSize) - 1

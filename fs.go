@@ -45,7 +45,7 @@ func (st DiscStorage) Stat(filename string) (fs.FileInfo, error) {
 }
 
 func (st DiscStorage) ReadDir(dir string) ([]fs.DirEntry, error) {
-	files, err := st.ListFiles(CleanPath(dir))
+	files, err := st.ListFiles(cleanPath(dir))
 	if err != nil {
 		return nil, err
 	}

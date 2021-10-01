@@ -6,6 +6,7 @@ import (
 )
 
 func (st DiscStorage) Delete(filename string) error {
+	filename = CleanPath(filename)
 	iter := newMessageIterator(st.session, st.channelId)
 
 	for {

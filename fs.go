@@ -44,6 +44,20 @@ func (st DiscStorage) Stat(filename string) (fs.FileInfo, error) {
 	return file.Stat()
 }
 
+func (st DiscStorage) ReadDir(dir string) ([]fs.DirEntry, error) {
+	files, err := st.ListFiles(CleanPath(dir))
+	if err != nil {
+		return nil, err
+	}
+
+	output := make([]fs.DirEntry, len(files))
+	for i, file := range files {
+		output[i] = DiscFolder{file}
+	}
+
+	return output, nil
+}
+
 func (df DiscFile) ConcreteStat() (FileInfo, error) { return df.info, nil }
 func (df DiscFile) Stat() (fs.FileInfo, error)      { return df.ConcreteStat() }
 func (df *DiscFile) Close() error {
@@ -64,3 +78,8 @@ func (df *DiscFile) Read(input []byte) (int, error) {
 	// todo: download only parts of a file?
 	return df.contents.Read(input)
 }
+
+type DiscFolder struct{ FileInfo }
+
+func (df DiscFolder) Type() fs.FileMode          { return fs.ModeDir | df.Mode() }
+func (df DiscFolder) Info() (fs.FileInfo, error) { return df, nil }

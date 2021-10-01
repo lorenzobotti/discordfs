@@ -6,22 +6,17 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"time"
+	"path"
 
-	"github.com/bwmarrin/discordgo"
+	dg "github.com/bwmarrin/discordgo"
 )
 
 // Send splits the `file` into chunks of size `chunkSize` and sends each one
-func (st DiscStorage) Send(file io.Reader, filename string, chunkSize, fileSize int) error {
-	div := newChunker(FileInfo{
-		name: filename,
-		// TODO: take this as input
-		pubblished: time.Now(),
-		size:       fileSize,
-	}, file, chunkSize)
+func (st DiscStorage) Send(file io.Reader, info FileInfo, chunkSize int) error {
+	info.name = CleanPath(info.name)
+	div := newChunker(info, file, chunkSize)
 
-	lastChunk := chunksNeeded(fileSize, chunkSize) - 1
+	lastChunk := chunksNeeded(info.size, chunkSize) - 1
 
 	for {
 		chunk, done, err := div.nextChunk()
@@ -41,16 +36,17 @@ func (st DiscStorage) Send(file io.Reader, filename string, chunkSize, fileSize 
 
 		filename := fmt.Sprintf("%02d_%s", chunk.Info.Part.part, chunk.Info.File.name)
 
-		attachment := discordgo.File{
+		attachment := dg.File{
 			Name:   filename,
 			Reader: bytes.NewBuffer(chunk.Contents),
 		}
 
-		message := discordgo.MessageSend{
+		message := dg.MessageSend{
 			Content: string(info),
-			Files:   []*discordgo.File{&attachment},
+			Files:   []*dg.File{&attachment},
 		}
 
+		// todo: retry on fail
 		_, err = st.session.ChannelMessageSendComplex(st.channelId, &message)
 		if err != nil {
 			return err
@@ -68,7 +64,13 @@ func (st DiscStorage) SendFile(file *os.File, chunkSize int) error {
 		return fmt.Errorf("error calling file.Stat(): %w", err)
 	}
 
-	return st.Send(file, filepath.Base(file.Name()), chunkSize, int(stat.Size()))
+	info := FileInfo{
+		name:       path.Base(file.Name()),
+		pubblished: stat.ModTime(),
+		size:       int(stat.Size()),
+	}
+
+	return st.Send(file, info, chunkSize)
 }
 
 func chunksNeeded(fileSize, chunkSize int) int {

@@ -14,6 +14,7 @@ import (
 // the whole file, then writes it all at once into `into`.
 // If you'd rather get each piece as soon as it arrives try using Receive()
 func (st DiscStorage) ReceiveAllAtOnce(into io.Writer, filename string) error {
+	filename = CleanPath(filename)
 	chunks, err := st.fileChunks(filename)
 	if err != nil {
 		return err
@@ -45,6 +46,7 @@ func (st DiscStorage) ReceiveAllAtOnce(into io.Writer, filename string) error {
 // `into` as soon as it comes
 // todo: remove duplication between this and ReceiveAllAtOnce()?
 func (st DiscStorage) Receive(into io.Writer, filename string) error {
+	filename = CleanPath(filename)
 	chunks, err := st.fileChunks(filename)
 	if err != nil {
 		return err

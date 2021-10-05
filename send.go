@@ -3,6 +3,7 @@ package discordfs
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -27,6 +28,10 @@ func (st DiscStorage) Send(file io.Reader, info FileInfo, chunkSize int) error {
 
 		if done {
 			break
+		}
+
+		if len(chunk.Contents) == 0 {
+			return errors.New("empty chunk")
 		}
 
 		info, err := json.Marshal(chunk.Info)
@@ -71,6 +76,22 @@ func (st DiscStorage) SendFile(file *os.File, chunkSize int) error {
 	}
 
 	return st.Send(file, info, chunkSize)
+}
+
+func (st DiscStorage) SendCompressed(file io.Reader, info FileInfo, chunkSize int) error {
+	buf := bytes.Buffer{}
+	err := readAndCompressInto(&buf, file, BestSpeed)
+	if err != nil {
+		return fmt.Errorf("error in readAndCompress(): %w", err)
+	}
+
+	info.size = buf.Len()
+	err = st.Send(&buf, info, chunkSize)
+	if err != nil {
+		return fmt.Errorf("error in Send(): %w", err)
+	}
+
+	return nil
 }
 
 func chunksNeeded(fileSize, chunkSize int) int {

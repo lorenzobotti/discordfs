@@ -1,6 +1,7 @@
 package discordfs
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,6 +82,21 @@ func (st DiscStorage) Receive(into io.Writer, filename string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (st DiscStorage) ReceiveCompressed(into io.Writer, filename string) error {
+	buf := bytes.Buffer{}
+	err := st.Receive(&buf, filename)
+	if err != nil {
+		return err
+	}
+
+	err = readAndDecompressInto(into, &buf)
+	if err != nil {
+		return err
 	}
 
 	return nil

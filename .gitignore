@@ -15,7 +15,7 @@
 # vendor/
 
 .vscode
-test_files/*
+test_files
 secrets.go
 coverage*
 #cmd

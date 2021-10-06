@@ -21,14 +21,34 @@ type PartInfo struct {
 }
 
 type ChunkInfo struct {
-	File FileInfo `json:"file"`
-	Part PartInfo `json:"part"`
-	Url  string   `json:"-"`
+	File        FileInfo    `json:"file"`
+	Part        PartInfo    `json:"part"`
+	Compression Compression `json:"compression"`
+	Url         string      `json:"-"`
 }
 
 type FileChunk struct {
 	Info     ChunkInfo
 	Contents []byte
+}
+
+// implementing fs.FileInfo
+
+func (f FileInfo) Name() string       { return path.Base(f.name) }
+func (f FileInfo) Size() int64        { return int64(f.size) }
+func (f FileInfo) Mode() fs.FileMode  { return fs.FileMode(0444) }
+func (f FileInfo) ModTime() time.Time { return f.pubblished }
+func (f FileInfo) IsDir() bool        { return f.isFolder }
+func (f FileInfo) Sys() interface{}   { return nil }
+
+func (f FileInfo) FullPath() string { return f.name }
+
+func NewFileInfo(filePath string, pubblished time.Time, size int) FileInfo {
+	return FileInfo{
+		name:       cleanPath(filePath),
+		pubblished: pubblished,
+		size:       size,
+	}
 }
 
 // field names `Name` and `Size` are necessary for fs.FileInfo, se we make them unexported
@@ -82,23 +102,4 @@ func (pi *PartInfo) UnmarshalJSON(data []byte) error {
 	pi.length = exported.Length
 	pi.of = exported.Of
 	return nil
-}
-
-// implementing fs.FileInfo
-
-func (f FileInfo) Name() string       { return path.Base(f.name) }
-func (f FileInfo) Size() int64        { return int64(f.size) }
-func (f FileInfo) Mode() fs.FileMode  { return fs.FileMode(0444) }
-func (f FileInfo) ModTime() time.Time { return f.pubblished }
-func (f FileInfo) IsDir() bool        { return f.isFolder }
-func (f FileInfo) Sys() interface{}   { return nil }
-
-func (f FileInfo) FullPath() string { return f.name }
-
-func NewFileInfo(filePath string, pubblished time.Time, size int) FileInfo {
-	return FileInfo{
-		name:       cleanPath(filePath),
-		pubblished: pubblished,
-		size:       size,
-	}
 }

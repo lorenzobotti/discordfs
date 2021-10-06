@@ -115,7 +115,8 @@ func deleteTestFiles(st DiscStorage) error {
 	}
 
 	for _, file := range filesOnServer {
-		if strings.HasPrefix(file.Name(), "test_file") {
+		if strings.HasPrefix(file.Name(), "test_file") ||
+			file.Name() == "" {
 			err = st.Delete(file.Name())
 			if err != nil {
 				return err

@@ -12,6 +12,7 @@ func TestChunksNeeded(t *testing.T) {
 		{20*KB + B, KB, 21},
 		{512 * MB, MB, 512},
 		{512*MB + 20*KB, MB, 513},
+		{KB, 512 * B, 2},
 	}
 
 	for _, testCase := range testCases {

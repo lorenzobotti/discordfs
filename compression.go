@@ -23,9 +23,13 @@ const (
 )
 
 const (
-	EachChunk CompressionType = (iota + 1) << 8
+	EachChunk CompressionType = iota << 8
 	WholeFile
 )
+
+// these next functions use a switch case instead of a map
+// because i suspect the map is slower with such few entries
+// todo: research if it's actually slower
 
 func (c CompressionLevel) String() string {
 	switch c {
@@ -65,15 +69,15 @@ func (c CompressionType) MarshalJSON() ([]byte, error) {
 
 func (c *CompressionLevel) UnmarshalJSON(input []byte) error {
 	switch string(input) {
-	case "none":
+	case `"none"`:
 		*c = NoCompression
-	case "best_speed":
+	case `"best_speed"`:
 		*c = BestSpeed
-	case "best_compression":
+	case `"best_compression"`:
 		*c = BestCompression
-	case "default":
+	case `"default"`:
 		*c = DefaultCompression
-	case "huffman":
+	case `"huffman"`:
 		*c = HuffmanOnly
 	default:
 		return fmt.Errorf("unknown value: %s", string(input))
@@ -83,9 +87,9 @@ func (c *CompressionLevel) UnmarshalJSON(input []byte) error {
 
 func (c *CompressionType) UnmarshalJSON(input []byte) error {
 	switch string(input) {
-	case "each_chunk":
+	case `"each_chunk"`:
 		*c = EachChunk
-	case "whole_file":
+	case `"whole_file"`:
 		*c = WholeFile
 	default:
 		return fmt.Errorf("unknown value: %s", string(input))

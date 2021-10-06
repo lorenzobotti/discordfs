@@ -17,11 +17,8 @@ func (st DiscStorage) Send(file io.Reader, info FileInfo, chunkSize int) error {
 	info.name = cleanPath(info.name)
 	div := newChunker(info, file, chunkSize)
 
-	lastChunk := chunksNeeded(info.size, chunkSize) - 1
-
 	for {
 		chunk, done, err := div.nextChunk()
-		chunk.Info.Part.of = lastChunk
 		if err != nil {
 			return err
 		}

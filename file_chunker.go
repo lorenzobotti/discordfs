@@ -61,6 +61,7 @@ func (c *chunker) nextChunk() (chunk FileChunk, done bool, err error) {
 			Part: PartInfo{
 				part:   c.chunksRead,
 				length: len(buf),
+				of:     c.lastChunk,
 			},
 		},
 	}
